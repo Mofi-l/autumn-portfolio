@@ -80,8 +80,10 @@ export class Weights {
 
   // ---------------------------------------------------------------------
   snapshot() {
+    // Keep at most ~200 MB of undo history (weights are G x bones floats).
+    const maxSteps = Math.max(3, Math.floor((200 * 1048576) / this.w.byteLength))
     this.history.push(this.w.slice())
-    if (this.history.length > 8) this.history.shift()
+    while (this.history.length > maxSteps) this.history.shift()
   }
 
   undo() {
@@ -96,6 +98,7 @@ export class Weights {
   auto(falloff = 4, smoothIters = 4) {
     const { rig, G, nb, w, gpos } = this
     const seg = new Float64Array(nb * 6)
+    const bias = Float64Array.from(rig.deform, (bi) => rig.defs[bi].bias ?? 1)
     rig.deform.forEach((bi, k) => {
       const a = rig.joints[bi]
       const t = rig.tail[bi]
@@ -114,7 +117,7 @@ export class Weights {
         let t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / len2 : 0
         t = t < 0 ? 0 : t > 1 ? 1 : t
         const qx = ax + dx * t - px, qy = ay + dy * t - py, qz = az + dz * t - pz
-        const d = Math.max(Math.sqrt(qx * qx + qy * qy + qz * qz), 1e-3)
+        const d = Math.max(Math.sqrt(qx * qx + qy * qy + qz * qz) * bias[k], 1e-3)
         tmp[k] = 1 / Math.pow(d, falloff)
       }
       // keep the 4 strongest influences
@@ -346,6 +349,6 @@ export class Weights {
   }
 }
 
-export const PALETTE = Array.from({ length: 24 }, (_, i) =>
+export const PALETTE = Array.from({ length: 96 }, (_, i) =>
   new THREE.Color().setHSL((i * 0.61803) % 1, 0.75, 0.5),
 )

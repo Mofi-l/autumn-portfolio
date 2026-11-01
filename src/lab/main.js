@@ -123,14 +123,14 @@ tc.addEventListener('objectChange', onGizmoChange)
 const jointProxy = new THREE.Object3D()
 scene.add(jointProxy)
 
-// Region box — starts around the sword in the knight's right hand.
+// Region box — starts around the right pauldron (shoulder plate).
 const box = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
   new THREE.MeshBasicMaterial({ color: '#f97316', wireframe: true, depthTest: false, transparent: true, opacity: 0.9 }),
 )
 box.renderOrder = 997
-box.position.set(-0.2, 0.29, 0.02)
-box.scale.set(0.1, 0.34, 0.08)
+box.position.set(-0.14, 0.745, 0)
+box.scale.set(0.08, 0.08, 0.13)
 box.visible = false
 scene.add(box)
 
@@ -148,7 +148,7 @@ function buildJointVisuals() {
     const m = new THREE.Mesh(jointGeo, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }))
     m.renderOrder = 999
     m.userData.index = i
-    m.scale.setScalar(d.deform ? 0.0075 : 0.005)
+    m.scale.setScalar(d.deform ? d.r : Math.min(d.r, 0.005))
     jointGroup.add(m)
     return m
   })
@@ -222,10 +222,10 @@ function rebindRest() {
 function fitTemplate() {
   geometry.computeBoundingBox()
   const bb = geometry.boundingBox
+  // Height-only fit: models are centred on x/z at load, and an asymmetric
+  // silhouette (e.g. a weapon on one side) must not shift the spine.
   const s = (bb.max.y - bb.min.y) / TEMPLATE_HEIGHT
-  const cx = (bb.min.x + bb.max.x) / 2
-  const cz = (bb.min.z + bb.max.z) / 2
-  rig.defs.forEach((d, i) => rig.joints[i].set(d.pos[0] * s + cx, d.pos[1] * s + bb.min.y, d.pos[2] * s + cz))
+  rig.defs.forEach((d, i) => rig.joints[i].set(d.pos[0] * s, d.pos[1] * s + bb.min.y, d.pos[2] * s))
 }
 
 function showJoint() {
@@ -255,7 +255,7 @@ function runAuto() {
   refreshWeights()
   $('joints-dirty').hidden = true
   scheduleSave()
-  flash('Auto weights done. Check elbows, knees, the skirt and the sword.')
+  flash('Auto weights done. Check elbows, knees, fingers and the skirt.')
 }
 
 function fillPiece(hit) {
@@ -535,16 +535,33 @@ function applyMaterials() {
   }
 }
 
+// Group the (many) bones by body region in the picker.
+function boneGroup(name) {
+  const side = name.endsWith('_L') ? 'Left' : name.endsWith('_R') ? 'Right' : ''
+  if (/^skirt/.test(name)) return 'Skirt'
+  if (/^pauldron/.test(name)) return 'Pauldrons'
+  if (/^(thumb|index|middle|ring|pinky)/.test(name)) return `${side} hand`
+  if (/^(clavicle|upperarm|forearm|hand)/.test(name)) return `${side} arm`
+  if (/^(thigh|shin|foot|toe)/.test(name)) return `${side} leg`
+  return 'Spine & head'
+}
+
 function fillBoneSelect() {
   const sel = $('bone')
-  sel.replaceChildren(
-    ...rig.deform.map((i) => {
-      const o = document.createElement('option')
-      o.value = String(i)
-      o.textContent = rig.defs[i].name
-      return o
-    }),
-  )
+  const groups = new Map()
+  for (const i of rig.deform) {
+    const g = boneGroup(rig.defs[i].name)
+    if (!groups.has(g)) {
+      const og = document.createElement('optgroup')
+      og.label = g
+      groups.set(g, og)
+    }
+    const o = document.createElement('option')
+    o.value = String(i)
+    o.textContent = rig.defs[i].name
+    groups.get(g).append(o)
+  }
+  sel.replaceChildren(...groups.values())
   sel.value = String(S.sel)
 }
 
@@ -855,7 +872,7 @@ const TOOL_HINTS = {
   subtract: 'Left-drag to remove the bone’s influence — it flows to the remaining bones.',
   smooth: 'Left-drag to soften hard weight edges (knees, elbows, skirt).',
   fill: 'Click a separate piece to give it 100% to the selected bone. Not mirrored.',
-  box: 'Move/scale the orange box around a region (it starts on the sword), pick hand_R, then Assign. Not mirrored.',
+  box: 'Move/scale the orange box around a region (it starts on the right pauldron), pick a bone, then Assign 100%. Not mirrored.',
 }
 
 document.querySelectorAll('[role=tab]').forEach((b) => {

@@ -33,6 +33,11 @@ export const PRESETS = [
       upperarm_R: E(-0.7, 0, -0.12),
       forearm_L: E(-0.6),
       forearm_R: E(-0.6),
+      // Tabard follows the raised thighs; back flap spreads on the ground.
+      skirt_F1: E(-1.6),
+      skirt_B1: E(1.1),
+      skirt_L: E(-0.9, 0, 0.25),
+      skirt_R: E(-0.9, 0, -0.25),
     },
   },
 ]
