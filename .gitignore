@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Raw source models (too large for git; optimized copies live in public/models)
+/kingslayer_assassin_-_dark_fantasy.glb
+/*.raw.glb
