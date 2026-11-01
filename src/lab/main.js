@@ -15,7 +15,7 @@ import { PRESETS } from './presets.js'
 import { idbGet, idbPut, idbDelete } from './store.js'
 
 const $ = (id) => document.getElementById(id)
-const MODEL_URL = new URL('../models/knight-lab.glb', window.location.href).href
+const MODEL_URL = new URL('../../models/knight-lab.glb', window.location.href).href
 const DRACO_PATH = 'https://www.gstatic.com/draco/versioned/decoders/1.5.5/'
 const BOW_MAX = 0.785 // same 45° the site uses
 const MODES = ['skeleton', 'weights', 'pose', 'export']

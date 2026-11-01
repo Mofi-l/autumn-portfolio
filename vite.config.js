@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 // Relative base so the build works under any deploy path (GitHub Pages
 // sub-path, custom domain, or root) without changes.
-// Two pages: the portfolio (index.html) and the Rig Lab (lab/index.html).
+// Pages: the portfolio, the Knight Lab viewer, and the rig editor.
 export default defineConfig({
   base: './',
   plugins: [react()],
@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         lab: fileURLToPath(new URL('./lab/index.html', import.meta.url)),
+        editor: fileURLToPath(new URL('./lab/editor/index.html', import.meta.url)),
       },
     },
   },
