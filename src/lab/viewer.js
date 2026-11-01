@@ -123,7 +123,10 @@ loader.load(
     $('stats').textContent = `${LABEL} · ${bones} bones · ${Math.round(tris / 1000)}k tris · ${clips.length} clips`
     $('loading').hidden = true
     // Test hook: jump the current clip to a time (seconds).
-    window.__knight = { seek: (t) => { if (mixer.action) { mixer.action.time = t; mixer.current.update(0) } } }
+    window.__knight = {
+      seek: (t) => { if (mixer.action) { mixer.action.time = t; mixer.current.update(0) } },
+      view: (p, t) => { camera.position.set(...p); controls.target.set(...t); controls.update() },
+    }
     window.__viewerReady = true
   },
   undefined,
