@@ -8,7 +8,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh'
 import { makeTemplate, Rig, TEMPLATE_HEIGHT } from './skeleton.js'
 import { Weights } from './weights.js'
@@ -34,9 +33,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping
 
 const scene = new THREE.Scene()
 scene.background = new THREE.Color('#17171c')
-// Same studio reflections as the viewer, so polished steel doesn't read as black.
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture
-scene.environmentIntensity = 0.55
 const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 50)
 camera.position.set(0.9, 0.75, 2.2)
 const orbit = new OrbitControls(camera, canvas)
@@ -668,15 +664,10 @@ function clipToPose(clip, hipsRest) {
   return { name: clip.name, bones, hips }
 }
 
-// Rigid accessories (e.g. the helmet) ride on a bone instead of being skinned.
-const ACCESSORIES = { Helmet: 'head' }
-
 async function applyGLTF(gltf) {
   gltf.scene.updateMatrixWorld(true)
-  const accessories = Object.keys(ACCESSORIES).map((n) => gltf.scene.getObjectByName(n)).filter(Boolean)
-  const inAccessory = (o) => accessories.some((a) => { for (let p = o; p; p = p.parent) if (p === a) return true; return false })
   const meshes = []
-  gltf.scene.traverse((o) => o.isMesh && !inAccessory(o) && meshes.push(o))
+  gltf.scene.traverse((o) => o.isMesh && meshes.push(o))
   if (!meshes.length) throw new Error('No mesh found in that file.')
 
   // A GLB exported by this lab (same bone names): continue where we left off.
@@ -692,7 +683,7 @@ async function applyGLTF(gltf) {
     geo.deleteAttribute('skinIndex')
     geo.deleteAttribute('skinWeight')
     const poses = gltf.animations.map((c) => clipToPose(c, joints[0]))
-    return setupModel({ geometry: geo, material: firstMaterial(sk), joints, skin, poses, accessories })
+    return setupModel({ geometry: geo, material: firstMaterial(sk), joints, skin, poses })
   }
 
   // Raw mesh(es): bake transforms, merge, put the feet on y = 0.
@@ -708,13 +699,11 @@ async function applyGLTF(gltf) {
   if (!geo) throw new Error('Could not merge the meshes in that file.')
   geo.computeBoundingBox()
   const bb = geo.boundingBox
-  const offset = new THREE.Vector3(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2)
-  geo.translate(offset.x, offset.y, offset.z)
-  for (const a of accessories) { a.position.add(offset); a.updateMatrixWorld(true) } // keep them on the body
-  return setupModel({ geometry: geo, material: firstMaterial(meshes[0]), accessories })
+  geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2)
+  return setupModel({ geometry: geo, material: firstMaterial(meshes[0]) })
 }
 
-async function setupModel({ geometry: geo, material, joints = null, skin = null, poses = null, accessories = [] }) {
+async function setupModel({ geometry: geo, material, joints = null, skin = null, poses = null }) {
   tc.detach()
   if (mesh) {
     modelRoot.clear()
@@ -759,11 +748,6 @@ async function setupModel({ geometry: geo, material, joints = null, skin = null,
   modelRoot.add(mesh, rig.root)
   modelRoot.updateMatrixWorld(true)
   mesh.bind(new THREE.Skeleton(rig.bones))
-  // Attach accessories to their bone, keeping their world placement (rest pose).
-  for (const a of accessories) {
-    const bone = rig.bones[rig.index.get(ACCESSORIES[a.name])]
-    if (bone) bone.attach(a)
-  }
 
   pickMesh = new THREE.Mesh(geometry)
   pickMesh.raycast = acceleratedRaycast
